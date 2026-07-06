@@ -7,8 +7,9 @@
 <meta name="theme-color" content="#141413" media="(prefers-color-scheme: dark)">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="Audits">
-<title>Audit Tracker</title>
+<meta name="apple-mobile-web-app-title" content="TapList">
+<link rel="apple-touch-icon" href="./icon.png">
+<title>TapList</title>
 <style>
   :root{
     --bg:#f7f7f5; --surface:#ffffff; --surface-2:#fbfbfa;
@@ -271,7 +272,7 @@ function render(){
 }
 
 function renderHome(){
-  document.getElementById("hTitle").textContent="Audits";
+  document.getElementById("hTitle").textContent="TapList";
   document.getElementById("hSub").textContent=state.audits.length?state.audits.length+(state.audits.length===1?" audit":" audits"):"";
   if(!state.audits.length){
     app.innerHTML='<div class="empty"><h2>No audits yet</h2><p>Create an audit to check off a recurring task across a fixed date range and spot the gaps.</p><button class="btn primary" data-act="new">Create your first audit</button></div>';
@@ -320,7 +321,7 @@ function renderDetail(){
 }
 
 function renderCreate(){
-  document.getElementById("hTitle").textContent="New audit";
+  document.getElementById("hTitle").textContent="New taplist";
   document.getElementById("hSub").textContent="";
   const t=new Date(), end=ymd(t), sd=new Date(t); sd.setMonth(sd.getMonth()-6); const start=ymd(sd);
   app.innerHTML=''
@@ -426,7 +427,7 @@ app.addEventListener("click",e=>{
 /* ---------- PWA manifest (inline, generated) ---------- */
 (function(){
   try{
-    const mf={name:"Audit Tracker",short_name:"Audits",display:"standalone",background_color:"#f7f7f5",theme_color:"#f7f7f5",start_url:".",icons:[]};
+    const mf={name:"TapList",short_name:"TapList",display:"standalone",background_color:"#f7f7f5",theme_color:"#f7f7f5",start_url:".",icons:[{src:"./icon.png",sizes:"512x512",type:"image/png"}]};
     const url=URL.createObjectURL(new Blob([JSON.stringify(mf)],{type:"application/manifest+json"}));
     const l=document.createElement("link"); l.rel="manifest"; l.href=url; document.head.appendChild(l);
   }catch(e){}
