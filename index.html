@@ -275,7 +275,7 @@ function renderHome(){
   document.getElementById("hTitle").textContent="TapList";
   document.getElementById("hSub").textContent=state.audits.length?state.audits.length+(state.audits.length===1?" audit":" audits"):"";
   if(!state.audits.length){
-    app.innerHTML='<div class="empty"><h2>No audits yet</h2><p>Create an audit to check off a recurring task across a fixed date range and spot the gaps.</p><button class="btn primary" data-act="new">Create your first audit</button></div>';
+    app.innerHTML='<div class="empty"><h2>No taplists yet</h2><p>Create a taplist to check off a recurring task across a fixed date range and spot the gaps.</p><button class="btn primary" data-act="new">Create your first taplist</button></div>';
     return;
   }
   let h="";
@@ -339,7 +339,7 @@ function renderCreate(){
     +'<div class="field hide" id="wrapDom"><label for="fDom">Day of the month</label><input type="number" id="fDom" min="1" max="31" step="1" value="1"><div class="hint">Months without this day are skipped.</div></div>'
     +'<div class="field"><label>Date range (fixed)</label><div class="two"><div><input type="date" id="fStart" value="'+start+'"></div><div><input type="date" id="fEnd" value="'+end+'"></div></div>'
       +'<div class="quickfill"><button type="button" data-quick="6">Last 6 months</button> <button type="button" data-quick="12">Last 12 months</button> <button type="button" data-quick="3">Last 3 months</button></div></div>'
-    +'<button class="btn primary block" data-act="save">Create audit</button>';
+    +'<button class="btn primary block" data-act="save">Create taplist</button>';
   syncTypeFields();
 }
 function syncTypeFields(){
