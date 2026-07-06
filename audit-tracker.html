@@ -1,0 +1,446 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#141413" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Audits">
+<title>Audit Tracker</title>
+<style>
+  :root{
+    --bg:#f7f7f5; --surface:#ffffff; --surface-2:#fbfbfa;
+    --text:#1a1a19; --text-2:#6b6b66; --text-3:#9a9a94;
+    --border:rgba(0,0,0,0.10); --border-2:rgba(0,0,0,0.16);
+    --green:#1D9E75; --green-bg:rgba(29,158,117,0.12);
+    --red:#c8482f; --red-bg:rgba(200,72,47,0.12); --red-border:rgba(200,72,47,0.45);
+    --pending:rgba(0,0,0,0.05); --pending-border:rgba(0,0,0,0.14);
+    --radius:12px; --ctrl:6px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#1a1a19; --surface:#242423; --surface-2:#1f1f1e;
+      --text:#f2f2ef; --text-2:#a8a8a2; --text-3:#77776f;
+      --border:rgba(255,255,255,0.12); --border-2:rgba(255,255,255,0.20);
+      --green:#2bbf90; --green-bg:rgba(43,191,144,0.16);
+      --red:#e0715a; --red-bg:rgba(224,113,90,0.16); --red-border:rgba(224,113,90,0.5);
+      --pending:rgba(255,255,255,0.06); --pending-border:rgba(255,255,255,0.16);
+    }
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:var(--bg); color:var(--text); font-size:14px; font-weight:400;
+    line-height:1.45; padding-bottom:env(safe-area-inset-bottom);
+  }
+  header{
+    position:sticky; top:0; z-index:10; background:var(--surface);
+    border-bottom:0.5px solid var(--border);
+    padding:calc(env(safe-area-inset-top) + 12px) 16px 12px;
+    display:flex; align-items:center; gap:10px;
+  }
+  header .title{font-size:16px; font-weight:500; flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  header .sub{font-size:12px; color:var(--text-2); font-weight:400;}
+  main{padding:14px 16px 40px; max-width:520px; margin:0 auto;}
+  .iconbtn{
+    appearance:none; border:0.5px solid var(--border-2); background:var(--surface);
+    color:var(--text); width:34px; height:34px; border-radius:var(--ctrl);
+    font-size:16px; display:inline-flex; align-items:center; justify-content:center; cursor:pointer;
+    flex:0 0 auto;
+  }
+  .iconbtn:active{transform:scale(0.96);}
+  .iconbtn svg{width:18px; height:18px; stroke:currentColor; fill:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round;}
+  .btn{
+    appearance:none; border:0.5px solid var(--border-2); background:var(--surface);
+    color:var(--text); border-radius:var(--ctrl); padding:10px 14px; font-size:14px;
+    font-weight:500; cursor:pointer;
+  }
+  .btn:active{transform:scale(0.98);}
+  .btn.primary{background:var(--green); border-color:var(--green); color:#fff;}
+  .btn.block{display:block; width:100%; text-align:center;}
+  .btn.ghost{background:transparent;}
+  .btn.danger{color:var(--red); border-color:var(--red-border);}
+  .row-actions{display:flex; gap:8px;}
+
+  /* Home */
+  .empty{text-align:center; color:var(--text-2); padding:48px 20px;}
+  .empty h2{font-size:16px; font-weight:500; color:var(--text); margin:0 0 6px;}
+  .empty p{margin:0 0 18px; font-size:13px;}
+  .audit-card{
+    background:var(--surface); border:0.5px solid var(--border); border-radius:var(--radius);
+    padding:13px 14px; margin-bottom:10px; cursor:pointer;
+  }
+  .audit-card:active{background:var(--surface-2);}
+  .audit-top{display:flex; align-items:baseline; gap:8px; margin-bottom:9px;}
+  .audit-name{font-size:14px; font-weight:500; flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .audit-count{font-size:12px; color:var(--text-2); font-weight:400; flex:0 0 auto;}
+  .audit-count .gaps{color:var(--red);}
+  .strip{display:flex; flex-wrap:wrap; gap:3px;}
+  .strip .sq{width:10px; height:10px; border-radius:2px;}
+  .sq.done{background:var(--green);}
+  .sq.gap{background:var(--red-bg); border:1px solid var(--red-border);}
+  .sq.pending{background:var(--pending); border:1px solid var(--pending-border);}
+  .meta{font-size:12px; color:var(--text-2); margin-top:8px;}
+
+  /* Detail grid */
+  .detail-head{margin-bottom:16px;}
+  .detail-head .rule{font-size:13px; color:var(--text-2); margin-top:3px;}
+  .detail-head .cov{font-size:13px; margin-top:6px;}
+  .detail-head .cov .g{color:var(--green); font-weight:500;}
+  .detail-head .cov .r{color:var(--red); font-weight:500;}
+  .month{margin-bottom:16px;}
+  .month h3{font-size:12px; font-weight:500; color:var(--text-2); margin:0 0 8px; letter-spacing:0.02em;}
+  .grid{display:flex; flex-wrap:wrap; gap:7px;}
+  .cell{
+    width:38px; height:38px; border-radius:8px; display:flex; flex-direction:column;
+    align-items:center; justify-content:center; cursor:pointer; user-select:none;
+    font-size:13px; line-height:1;
+  }
+  .cell .wd{font-size:9px; opacity:0.7; margin-bottom:2px;}
+  .cell.done{background:var(--green); color:#fff;}
+  .cell.gap{background:var(--red-bg); border:1.5px solid var(--red-border); color:var(--red);}
+  .cell.pending{background:var(--pending); border:1px solid var(--pending-border); color:var(--text-2);}
+  .cell:active{transform:scale(0.93);}
+  .legend{display:flex; gap:16px; margin:4px 0 20px; font-size:12px; color:var(--text-2);}
+  .legend span{display:inline-flex; align-items:center; gap:6px;}
+  .legend .k{width:13px; height:13px; border-radius:3px; flex:0 0 auto;}
+
+  /* Form */
+  .field{margin-bottom:16px;}
+  .field label{display:block; font-size:13px; font-weight:500; margin-bottom:6px;}
+  .field .hint{font-size:12px; color:var(--text-3); font-weight:400; margin-top:5px;}
+  input[type=text], input[type=number], input[type=date], select{
+    width:100%; appearance:none; background:var(--surface); color:var(--text);
+    border:0.5px solid var(--border-2); border-radius:var(--ctrl); padding:10px 12px;
+    font-size:15px; font-family:inherit;
+  }
+  input:focus, select:focus{outline:none; border-color:var(--green); box-shadow:0 0 0 3px var(--green-bg);}
+  .two{display:flex; gap:10px;}
+  .two > div{flex:1; min-width:0;}
+  .wdrow{display:flex; gap:6px;}
+  .wd-btn{
+    flex:1; appearance:none; border:0.5px solid var(--border-2); background:var(--surface);
+    color:var(--text-2); border-radius:var(--ctrl); padding:9px 0; font-size:13px; cursor:pointer;
+  }
+  .wd-btn.on{background:var(--green); border-color:var(--green); color:#fff; font-weight:500;}
+  .quickfill{margin-top:8px;}
+  .quickfill button{
+    appearance:none; background:transparent; border:0.5px solid var(--border-2);
+    color:var(--text); border-radius:var(--ctrl); padding:6px 10px; font-size:12px; cursor:pointer;
+  }
+  .hide{display:none !important;}
+
+  /* Toast + footer */
+  #toast{
+    position:fixed; left:50%; bottom:calc(env(safe-area-inset-bottom) + 20px); transform:translateX(-50%) translateY(20px);
+    background:var(--text); color:var(--bg); padding:10px 16px; border-radius:20px; font-size:13px;
+    opacity:0; pointer-events:none; transition:opacity .2s, transform .2s; z-index:100; max-width:80vw;
+  }
+  #toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
+  .foot{margin-top:24px; padding-top:16px; border-top:0.5px solid var(--border); display:flex; gap:8px; justify-content:center; flex-wrap:wrap;}
+  .foot .btn{font-weight:400; font-size:13px; padding:8px 12px;}
+</style>
+</head>
+<body>
+<header>
+  <button class="iconbtn hide" id="back" aria-label="Back">
+    <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"></polyline></svg>
+  </button>
+  <div style="flex:1; min-width:0;">
+    <div class="title" id="hTitle">Audits</div>
+    <div class="sub" id="hSub"></div>
+  </div>
+  <button class="iconbtn" id="add" aria-label="New audit">
+    <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+  </button>
+</header>
+
+<main id="app"></main>
+<div id="toast"></div>
+
+<input type="file" id="importFile" accept="application/json,.json" class="hide">
+
+<script>
+"use strict";
+
+/* ---------- storage: IndexedDB with in-memory fallback ---------- */
+const DB_NAME="auditTracker", STORE="audits";
+let db=null, memoryOnly=false;
+let state={audits:[]};
+
+function openDB(){
+  return new Promise((resolve)=>{
+    try{
+      const req=indexedDB.open(DB_NAME,1);
+      req.onupgradeneeded=()=>{ const d=req.result; if(!d.objectStoreNames.contains(STORE)) d.createObjectStore(STORE,{keyPath:"id"}); };
+      req.onsuccess=()=>{ db=req.result; resolve(); };
+      req.onerror=()=>{ memoryOnly=true; resolve(); };
+    }catch(e){ memoryOnly=true; resolve(); }
+  });
+}
+function loadAll(){
+  return new Promise((resolve)=>{
+    if(memoryOnly||!db){ resolve([]); return; }
+    try{
+      const tx=db.transaction(STORE,"readonly").objectStore(STORE).getAll();
+      tx.onsuccess=()=>resolve(tx.result||[]);
+      tx.onerror=()=>resolve([]);
+    }catch(e){ resolve([]); }
+  });
+}
+function persist(a){
+  if(memoryOnly||!db) return;
+  try{ db.transaction(STORE,"readwrite").objectStore(STORE).put(a); }catch(e){}
+}
+function removeStored(id){
+  if(memoryOnly||!db) return;
+  try{ db.transaction(STORE,"readwrite").objectStore(STORE).delete(id); }catch(e){}
+}
+const saveTimers={};
+function saveAudit(a){
+  clearTimeout(saveTimers[a.id]);
+  saveTimers[a.id]=setTimeout(()=>persist(a),200);
+}
+
+/* ---------- helpers ---------- */
+function uid(){ try{ return crypto.randomUUID(); }catch(e){ return "a"+Date.now()+Math.random().toString(16).slice(2); } }
+function esc(s){ return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c])); }
+function ymd(d){ return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
+function parseYMD(s){ const [y,m,d]=s.split("-").map(Number); return new Date(y,m-1,d); }
+function todayStr(){ return ymd(new Date()); }
+const WD=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+const MONTHS=["January","February","March","April","May","June","July","August","September","October","November","December"];
+function toast(msg){ const t=document.getElementById("toast"); t.textContent=msg; t.classList.add("show"); clearTimeout(toast._t); toast._t=setTimeout(()=>t.classList.remove("show"),1800); }
+
+/* ---------- occurrence generation ---------- */
+function occurrences(a){
+  const start=parseYMD(a.startDate), end=parseYMD(a.endDate), out=[];
+  if(end<start) return out;
+  const r=a.rule;
+  if(r.type==="daily"){
+    for(let d=new Date(start); d<=end; d.setDate(d.getDate()+1)) out.push(ymd(d));
+  }else if(r.type==="weekly"){
+    const set=new Set(r.weekdays||[]);
+    for(let d=new Date(start); d<=end; d.setDate(d.getDate()+1)) if(set.has(d.getDay())) out.push(ymd(d));
+  }else if(r.type==="everyN"){
+    const n=Math.max(1,parseInt(r.n,10)||1);
+    for(let d=new Date(start); d<=end; d.setDate(d.getDate()+n)) out.push(ymd(d));
+  }else if(r.type==="monthly"){
+    const dom=Math.min(31,Math.max(1,parseInt(r.dayOfMonth,10)||1));
+    let y=start.getFullYear(), m=start.getMonth();
+    while(true){
+      const cand=new Date(y,m,dom);
+      if(cand.getMonth()===m && cand>=start && cand<=end) out.push(ymd(cand));
+      m++; if(m>11){m=0;y++;}
+      if(new Date(y,m,1)>end) break;
+    }
+  }
+  return out;
+}
+function stateOf(a,occ){
+  if(a.done&&a.done[occ]) return "done";
+  return occ<=todayStr() ? "gap" : "pending";
+}
+function stats(a){
+  const occ=occurrences(a); const today=todayStr(); let done=0,gaps=0;
+  for(const o of occ){ if(a.done&&a.done[o]) done++; else if(o<=today) gaps++; }
+  return {occ, total:occ.length, done, gaps};
+}
+function ruleText(r){
+  if(r.type==="daily") return "Every day";
+  if(r.type==="weekly"){ const ds=(r.weekdays||[]).slice().sort().map(i=>WD[i]); return ds.length===7?"Every day":"Every "+ds.join(", "); }
+  if(r.type==="everyN") return "Every "+r.n+" day"+(r.n==1?"":"s");
+  if(r.type==="monthly"){ const d=r.dayOfMonth; const suf=d%10===1&&d!==11?"st":d%10===2&&d!==12?"nd":d%10===3&&d!==13?"rd":"th"; return "Monthly on the "+d+suf; }
+  return "";
+}
+function rangeText(a){ const s=parseYMD(a.startDate), e=parseYMD(a.endDate); const f=d=>MONTHS[d.getMonth()].slice(0,3)+" "+d.getDate()+", "+d.getFullYear(); return f(s)+" – "+f(e); }
+
+/* ---------- views ---------- */
+let view="home", currentId=null;
+const app=document.getElementById("app");
+
+function render(){
+  document.getElementById("back").classList.toggle("hide",view==="home");
+  document.getElementById("add").classList.toggle("hide",view!=="home");
+  if(view==="home") renderHome();
+  else if(view==="create") renderCreate();
+  else if(view==="detail") renderDetail();
+}
+
+function renderHome(){
+  document.getElementById("hTitle").textContent="Audits";
+  document.getElementById("hSub").textContent=state.audits.length?state.audits.length+(state.audits.length===1?" audit":" audits"):"";
+  if(!state.audits.length){
+    app.innerHTML='<div class="empty"><h2>No audits yet</h2><p>Create an audit to check off a recurring task across a fixed date range and spot the gaps.</p><button class="btn primary" data-act="new">Create your first audit</button></div>';
+    return;
+  }
+  let h="";
+  for(const a of state.audits){
+    const s=stats(a);
+    let strip="";
+    for(const o of s.occ) strip+='<span class="sq '+stateOf(a,o)+'"></span>';
+    h+='<div class="audit-card" data-open="'+a.id+'">'
+      +'<div class="audit-top"><span class="audit-name">'+esc(a.name)+'</span>'
+      +'<span class="audit-count">'+s.done+' / '+s.total+(s.gaps?' · <span class="gaps">'+s.gaps+' gap'+(s.gaps===1?'':'s')+'</span>':'')+'</span></div>'
+      +'<div class="strip">'+strip+'</div></div>';
+  }
+  h+='<div class="foot"><button class="btn ghost" data-act="export">Export JSON</button><button class="btn ghost" data-act="import">Import JSON</button></div>';
+  app.innerHTML=h;
+}
+
+function renderDetail(){
+  const a=state.audits.find(x=>x.id===currentId);
+  if(!a){ view="home"; return render(); }
+  const s=stats(a);
+  document.getElementById("hTitle").textContent=a.name;
+  document.getElementById("hSub").textContent=rangeText(a);
+  // group by month
+  const groups=[]; const idx={};
+  for(const o of s.occ){ const key=o.slice(0,7); if(!(key in idx)){ idx[key]=groups.length; groups.push({key,items:[]}); } groups[idx[key]].items.push(o); }
+  let h='<div class="detail-head"><div class="rule">'+esc(ruleText(a.rule))+'</div>'
+    +'<div class="cov"><span class="g">'+s.done+' done</span> of '+s.total
+    +(s.gaps?' · <span class="r">'+s.gaps+' gap'+(s.gaps===1?'':'s')+'</span>':'')+'</div></div>';
+  h+='<div class="legend"><span><span class="k" style="background:var(--green)"></span>done</span>'
+    +'<span><span class="k" style="background:var(--red-bg);border:1.5px solid var(--red-border)"></span>gap</span>'
+    +'<span><span class="k" style="background:var(--pending);border:1px solid var(--pending-border)"></span>upcoming</span></div>';
+  for(const g of groups){
+    const [y,m]=g.key.split("-").map(Number);
+    h+='<div class="month"><h3>'+MONTHS[m-1]+' '+y+'</h3><div class="grid">';
+    for(const o of g.items){
+      const d=parseYMD(o); const st=stateOf(a,o);
+      h+='<div class="cell '+st+'" data-toggle="'+o+'"><span class="wd">'+WD[d.getDay()]+'</span>'+d.getDate()+'</div>';
+    }
+    h+='</div></div>';
+  }
+  h+='<div class="foot"><button class="btn danger" data-act="delete">Delete audit</button></div>';
+  app.innerHTML=h;
+}
+
+function renderCreate(){
+  document.getElementById("hTitle").textContent="New audit";
+  document.getElementById("hSub").textContent="";
+  const t=new Date(), end=ymd(t), sd=new Date(t); sd.setMonth(sd.getMonth()-6); const start=ymd(sd);
+  app.innerHTML=''
+    +'<div class="field"><label for="fName">Name</label><input type="text" id="fName" placeholder="Update step tracker" autocomplete="off"></div>'
+    +'<div class="field"><label for="fType">Recurrence</label><select id="fType">'
+      +'<option value="weekly">Specific weekday(s)</option>'
+      +'<option value="daily">Every day</option>'
+      +'<option value="everyN">Every N days</option>'
+      +'<option value="monthly">Monthly on a day</option>'
+    +'</select></div>'
+    +'<div class="field" id="wrapWeekly"><label>On which days?</label><div class="wdrow" id="wdRow">'
+      +WD.map((w,i)=>'<button type="button" class="wd-btn'+(i===2?' on':'')+'" data-wd="'+i+'">'+w[0]+'</button>').join('')
+    +'</div></div>'
+    +'<div class="field hide" id="wrapN"><label for="fN">Every how many days?</label><input type="number" id="fN" min="1" step="1" value="7"></div>'
+    +'<div class="field hide" id="wrapDom"><label for="fDom">Day of the month</label><input type="number" id="fDom" min="1" max="31" step="1" value="1"><div class="hint">Months without this day are skipped.</div></div>'
+    +'<div class="field"><label>Date range (fixed)</label><div class="two"><div><input type="date" id="fStart" value="'+start+'"></div><div><input type="date" id="fEnd" value="'+end+'"></div></div>'
+      +'<div class="quickfill"><button type="button" data-quick="6">Last 6 months</button> <button type="button" data-quick="12">Last 12 months</button> <button type="button" data-quick="3">Last 3 months</button></div></div>'
+    +'<button class="btn primary block" data-act="save">Create audit</button>';
+  syncTypeFields();
+}
+function syncTypeFields(){
+  const t=document.getElementById("fType").value;
+  document.getElementById("wrapWeekly").classList.toggle("hide",t!=="weekly");
+  document.getElementById("wrapN").classList.toggle("hide",t!=="everyN");
+  document.getElementById("wrapDom").classList.toggle("hide",t!=="monthly");
+}
+
+/* ---------- create logic ---------- */
+function collectRule(){
+  const t=document.getElementById("fType").value;
+  if(t==="weekly"){ const wd=[...document.querySelectorAll(".wd-btn.on")].map(b=>+b.dataset.wd); return wd.length?{type:"weekly",weekdays:wd}:null; }
+  if(t==="daily") return {type:"daily"};
+  if(t==="everyN"){ const n=parseInt(document.getElementById("fN").value,10); return n>=1?{type:"everyN",n}:null; }
+  if(t==="monthly"){ const d=parseInt(document.getElementById("fDom").value,10); return d>=1&&d<=31?{type:"monthly",dayOfMonth:d}:null; }
+  return null;
+}
+function createAudit(){
+  const name=document.getElementById("fName").value.trim();
+  if(!name){ toast("Enter a name"); return; }
+  const rule=collectRule();
+  if(!rule){ toast("Pick at least one day / value"); return; }
+  const startDate=document.getElementById("fStart").value, endDate=document.getElementById("fEnd").value;
+  if(!startDate||!endDate){ toast("Set both dates"); return; }
+  if(parseYMD(endDate)<parseYMD(startDate)){ toast("End is before start"); return; }
+  const a={id:uid(),name,rule,startDate,endDate,createdAt:Date.now(),done:{}};
+  if(!occurrences(a).length){ toast("That rule makes no dates in range"); return; }
+  state.audits.unshift(a); persist(a);
+  currentId=a.id; view="detail"; render(); toast("Audit created");
+}
+
+/* ---------- export / import ---------- */
+function exportJSON(){
+  const blob=new Blob([JSON.stringify({app:"audit-tracker",version:1,exportedAt:new Date().toISOString(),audits:state.audits},null,2)],{type:"application/json"});
+  const url=URL.createObjectURL(blob); const a=document.createElement("a");
+  a.href=url; a.download="audits-"+todayStr()+".json"; a.click();
+  setTimeout(()=>URL.revokeObjectURL(url),1000); toast("Exported "+state.audits.length+" audit"+(state.audits.length===1?"":"s"));
+}
+function importJSON(file){
+  const r=new FileReader();
+  r.onload=()=>{
+    try{
+      const data=JSON.parse(r.result); const list=Array.isArray(data)?data:data.audits;
+      if(!Array.isArray(list)) throw 0;
+      let n=0;
+      for(const raw of list){
+        if(!raw||!raw.rule||!raw.startDate||!raw.endDate) continue;
+        const a={id:raw.id||uid(),name:raw.name||"Untitled",rule:raw.rule,startDate:raw.startDate,endDate:raw.endDate,createdAt:raw.createdAt||Date.now(),done:raw.done||{}};
+        const i=state.audits.findIndex(x=>x.id===a.id);
+        if(i>=0) state.audits[i]=a; else state.audits.unshift(a);
+        persist(a); n++;
+      }
+      view="home"; render(); toast(n?("Imported "+n+" audit"+(n===1?"":"s")):"Nothing to import");
+    }catch(e){ toast("Couldn't read that file"); }
+  };
+  r.readAsText(file);
+}
+
+/* ---------- events (delegation) ---------- */
+document.getElementById("add").addEventListener("click",()=>{ view="create"; render(); });
+document.getElementById("back").addEventListener("click",()=>{ view="home"; currentId=null; render(); });
+document.getElementById("importFile").addEventListener("change",e=>{ if(e.target.files[0]) importJSON(e.target.files[0]); e.target.value=""; });
+
+app.addEventListener("change",e=>{ if(e.target.id==="fType") syncTypeFields(); });
+app.addEventListener("click",e=>{
+  const wd=e.target.closest("[data-wd]"); if(wd){ wd.classList.toggle("on"); return; }
+  const quick=e.target.closest("[data-quick]");
+  if(quick){ const t=new Date(); document.getElementById("fEnd").value=ymd(t); const s=new Date(t); s.setMonth(s.getMonth()-(+quick.dataset.quick)); document.getElementById("fStart").value=ymd(s); return; }
+  const tog=e.target.closest("[data-toggle]");
+  if(tog){ const a=state.audits.find(x=>x.id===currentId); if(!a) return; const o=tog.dataset.toggle; a.done=a.done||{}; if(a.done[o]) delete a.done[o]; else a.done[o]=true; saveAudit(a); renderDetail(); return; }
+  const open=e.target.closest("[data-open]"); if(open){ currentId=open.dataset.open; view="detail"; render(); return; }
+  const act=e.target.closest("[data-act]"); if(!act) return;
+  const which=act.dataset.act;
+  if(which==="new"){ view="create"; render(); }
+  else if(which==="save"){ createAudit(); }
+  else if(which==="export"){ exportJSON(); }
+  else if(which==="import"){ document.getElementById("importFile").click(); }
+  else if(which==="delete"){
+    const a=state.audits.find(x=>x.id===currentId); if(!a) return;
+    if(confirm('Delete "'+a.name+'"? This cannot be undone.')){ state.audits=state.audits.filter(x=>x.id!==a.id); removeStored(a.id); view="home"; currentId=null; render(); toast("Deleted"); }
+  }
+});
+
+/* ---------- PWA manifest (inline, generated) ---------- */
+(function(){
+  try{
+    const mf={name:"Audit Tracker",short_name:"Audits",display:"standalone",background_color:"#f7f7f5",theme_color:"#f7f7f5",start_url:".",icons:[]};
+    const url=URL.createObjectURL(new Blob([JSON.stringify(mf)],{type:"application/manifest+json"}));
+    const l=document.createElement("link"); l.rel="manifest"; l.href=url; document.head.appendChild(l);
+  }catch(e){}
+})();
+
+/* ---------- boot ---------- */
+(async function(){
+  await openDB();
+  const rows=await loadAll();
+  rows.sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+  state.audits=rows;
+  render();
+  if(memoryOnly) toast("Storage unavailable — session only");
+})();
+</script>
+</body>
+</html>
