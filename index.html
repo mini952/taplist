@@ -154,6 +154,12 @@
     <div class="title" id="hTitle">Audits</div>
     <div class="sub" id="hSub"></div>
   </div>
+  <button class="iconbtn" id="importBtn" aria-label="Import JSON">
+    <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+  </button>
+  <button class="iconbtn" id="exportBtn" aria-label="Export JSON">
+    <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+  </button>
   <button class="iconbtn" id="add" aria-label="New audit">
     <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
   </button>
@@ -266,6 +272,8 @@ const app=document.getElementById("app");
 function render(){
   document.getElementById("back").classList.toggle("hide",view==="home");
   document.getElementById("add").classList.toggle("hide",view!=="home");
+  document.getElementById("importBtn").classList.toggle("hide",view!=="home");
+  document.getElementById("exportBtn").classList.toggle("hide",view!=="home");
   if(view==="home") renderHome();
   else if(view==="create") renderCreate();
   else if(view==="detail") renderDetail();
@@ -274,21 +282,20 @@ function render(){
 function renderHome(){
   document.getElementById("hTitle").textContent="TapList";
   document.getElementById("hSub").textContent=state.audits.length?state.audits.length+(state.audits.length===1?" audit":" audits"):"";
-  if(!state.audits.length){
-    app.innerHTML='<div class="empty"><h2>No taplists yet</h2><p>Create a taplist to check off a recurring task across a fixed date range and spot the gaps.</p><button class="btn primary" data-act="new">Create your first taplist</button></div>';
-    return;
-  }
   let h="";
-  for(const a of state.audits){
-    const s=stats(a);
-    let strip="";
-    for(const o of s.occ) strip+='<span class="sq '+stateOf(a,o)+'"></span>';
-    h+='<div class="audit-card" data-open="'+a.id+'">'
-      +'<div class="audit-top"><span class="audit-name">'+esc(a.name)+'</span>'
-      +'<span class="audit-count">'+s.done+' / '+s.total+(s.gaps?' · <span class="gaps">'+s.gaps+' gap'+(s.gaps===1?'':'s')+'</span>':'')+'</span></div>'
-      +'<div class="strip">'+strip+'</div></div>';
+  if(!state.audits.length){
+    h='<div class="empty"><h2>No taplists yet</h2><p>Create a taplist to check off a recurring task across a fixed date range and spot the gaps.</p><button class="btn primary" data-act="new">Create your first taplist</button></div>';
+  }else{
+    for(const a of state.audits){
+      const s=stats(a);
+      let strip="";
+      for(const o of s.occ) strip+='<span class="sq '+stateOf(a,o)+'"></span>';
+      h+='<div class="audit-card" data-open="'+a.id+'">'
+        +'<div class="audit-top"><span class="audit-name">'+esc(a.name)+'</span>'
+        +'<span class="audit-count">'+s.done+' / '+s.total+(s.gaps?' · <span class="gaps">'+s.gaps+' gap'+(s.gaps===1?'':'s')+'</span>':'')+'</span></div>'
+        +'<div class="strip">'+strip+'</div></div>';
+    }
   }
-  h+='<div class="foot"><button class="btn ghost" data-act="export">Export JSON</button><button class="btn ghost" data-act="import">Import JSON</button></div>';
   app.innerHTML=h;
 }
 
@@ -401,6 +408,8 @@ function importJSON(file){
 
 /* ---------- events (delegation) ---------- */
 document.getElementById("add").addEventListener("click",()=>{ view="create"; render(); });
+document.getElementById("importBtn").addEventListener("click",()=>{ document.getElementById("importFile").click(); });
+document.getElementById("exportBtn").addEventListener("click",()=>{ exportJSON(); });
 document.getElementById("back").addEventListener("click",()=>{ view="home"; currentId=null; render(); });
 document.getElementById("importFile").addEventListener("change",e=>{ if(e.target.files[0]) importJSON(e.target.files[0]); e.target.value=""; });
 
