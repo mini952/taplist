@@ -143,6 +143,34 @@
   #toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
   .foot{margin-top:24px; padding-top:16px; border-top:0.5px solid var(--border); display:flex; gap:8px; justify-content:center; flex-wrap:wrap;}
   .foot .btn{font-weight:400; font-size:13px; padding:8px 12px;}
+
+  /* Rename: tap the header title in detail view */
+  .title.editable{cursor:text;}
+  .title-edit{
+    width:100%; appearance:none; background:var(--surface); color:var(--text);
+    border:0.5px solid var(--green); border-radius:var(--ctrl); padding:2px 8px;
+    font-size:16px; font-weight:500; font-family:inherit; line-height:1.2;
+  }
+  .title-edit:focus{outline:none; box-shadow:0 0 0 3px var(--green-bg);}
+
+  /* Completion celebration */
+  .celebrate{position:fixed; inset:0; display:flex; align-items:center; justify-content:center; z-index:120;}
+  .celebrate[hidden]{display:none;}
+  .celebrate-popup{
+    background:var(--surface); border:0.5px solid var(--border); border-radius:16px;
+    padding:24px 30px 26px; text-align:center; box-shadow:0 18px 50px rgba(0,0,0,0.28);
+    opacity:0; transform:scale(0.85); max-width:80vw;
+  }
+  .celebrate-popup.show{animation:celebrateIn .42s cubic-bezier(.18,.9,.28,1.35) forwards;}
+  .celebrate-popup.hide{animation:celebrateOut .26s ease forwards;}
+  @keyframes celebrateIn{0%{opacity:0; transform:scale(0.85) translateY(6px);} 100%{opacity:1; transform:scale(1) translateY(0);}}
+  @keyframes celebrateOut{to{opacity:0; transform:scale(0.94) translateY(-4px);}}
+  .check-ring{width:54px; height:54px; border-radius:50%; background:var(--green-bg); display:flex; align-items:center; justify-content:center; margin:0 auto 14px;}
+  .check-ring::after{content:""; width:13px; height:24px; border:solid var(--green); border-width:0 3.5px 3.5px 0; transform:rotate(45deg) translateY(-2px);}
+  .celebrate-popup .big{font-size:19px; font-weight:600; margin:0;}
+  .celebrate-popup .sub{font-size:13px; color:var(--text-2); margin:5px 0 0;}
+  .confetti{position:fixed; inset:0; width:100%; height:100%; pointer-events:none; z-index:130;}
+  @media (prefers-reduced-motion: reduce){ .celebrate-popup.show{animation-duration:.001s;} }
 </style>
 </head>
 <body>
@@ -167,6 +195,15 @@
 
 <main id="app"></main>
 <div id="toast"></div>
+
+<div class="celebrate" id="celebrate" hidden>
+  <div class="celebrate-popup">
+    <div class="check-ring"></div>
+    <p class="big">All done</p>
+    <p class="sub" id="celebrateSub">Every occurrence verified</p>
+  </div>
+</div>
+<canvas id="confetti" class="confetti"></canvas>
 
 <input type="file" id="importFile" accept="application/json,.json" class="hide">
 
@@ -274,6 +311,7 @@ function render(){
   document.getElementById("add").classList.toggle("hide",view!=="home");
   document.getElementById("importBtn").classList.toggle("hide",view!=="home");
   document.getElementById("exportBtn").classList.toggle("hide",view!=="home");
+  document.getElementById("hTitle").classList.toggle("editable",view==="detail");
   if(view==="home") renderHome();
   else if(view==="create") renderCreate();
   else if(view==="detail") renderDetail();
@@ -419,7 +457,16 @@ app.addEventListener("click",e=>{
   const quick=e.target.closest("[data-quick]");
   if(quick){ const t=new Date(); document.getElementById("fEnd").value=ymd(t); const s=new Date(t); s.setMonth(s.getMonth()-(+quick.dataset.quick)); document.getElementById("fStart").value=ymd(s); return; }
   const tog=e.target.closest("[data-toggle]");
-  if(tog){ const a=state.audits.find(x=>x.id===currentId); if(!a) return; const o=tog.dataset.toggle; a.done=a.done||{}; if(a.done[o]) delete a.done[o]; else a.done[o]=true; saveAudit(a); renderDetail(); return; }
+  if(tog){
+    const a=state.audits.find(x=>x.id===currentId); if(!a) return;
+    const o=tog.dataset.toggle; a.done=a.done||{};
+    const before=stats(a); const wasComplete=before.total>0 && before.done===before.total;
+    if(a.done[o]) delete a.done[o]; else a.done[o]=true;
+    saveAudit(a); renderDetail();
+    const after=stats(a); const nowComplete=after.total>0 && after.done===after.total;
+    if(nowComplete && !wasComplete) celebrate(after);
+    return;
+  }
   const open=e.target.closest("[data-open]"); if(open){ currentId=open.dataset.open; view="detail"; render(); return; }
   const act=e.target.closest("[data-act]"); if(!act) return;
   const which=act.dataset.act;
@@ -432,6 +479,109 @@ app.addEventListener("click",e=>{
     if(confirm('Delete "'+a.name+'"? This cannot be undone.')){ state.audits=state.audits.filter(x=>x.id!==a.id); removeStored(a.id); view="home"; currentId=null; render(); toast("Deleted"); }
   }
 });
+
+/* ---------- rename: tap the header title in detail view ---------- */
+function beginTitleEdit(){
+  if(view!=="detail") return;
+  const a=state.audits.find(x=>x.id===currentId); if(!a) return;
+  const titleEl=document.getElementById("hTitle");
+  if(titleEl.dataset.editing==="1") return;
+  titleEl.dataset.editing="1";
+  const current=a.name;
+  const input=document.createElement("input");
+  input.type="text"; input.className="title-edit"; input.value=current;
+  input.setAttribute("aria-label","Edit name"); input.autocomplete="off";
+  titleEl.style.display="none";
+  titleEl.after(input);
+  input.focus(); input.setSelectionRange(current.length,current.length);
+  let closed=false;
+  function finish(save){
+    if(closed) return; closed=true;
+    const val=save ? (input.value.trim()||current) : current;
+    const changed=save && val!==a.name;
+    if(changed){ a.name=val; persist(a); }
+    titleEl.textContent=val;
+    input.remove();
+    titleEl.style.display="";
+    delete titleEl.dataset.editing;
+    if(changed) toast("Renamed");
+  }
+  input.addEventListener("keydown",ev=>{
+    if(ev.key==="Enter"){ ev.preventDefault(); finish(true); }
+    else if(ev.key==="Escape"){ ev.preventDefault(); finish(false); }
+  });
+  input.addEventListener("blur",()=>finish(true));
+}
+document.getElementById("hTitle").addEventListener("click",beginTitleEdit);
+
+/* ---------- completion celebration ---------- */
+const CELEBRATE_COLORS=["#1D9E75","#F5A623","#4C9AFF","#E5484D","#A78BFA","#ffffff"];
+const confettiCanvas=document.getElementById("confetti");
+const confettiCtx=confettiCanvas.getContext("2d");
+let confettiParticles=[], confettiRaf=null;
+function prefersReduced(){ try{ return window.matchMedia("(prefers-reduced-motion: reduce)").matches; }catch(e){ return false; } }
+function sizeConfetti(){
+  const dpr=window.devicePixelRatio||1;
+  confettiCanvas.width=window.innerWidth*dpr;
+  confettiCanvas.height=window.innerHeight*dpr;
+  confettiCtx.setTransform(dpr,0,0,dpr,0,0);
+}
+function spawnConfetti(cx,cy){
+  for(let i=0;i<90;i++){
+    const angle=(-Math.PI/2)+(Math.random()-0.5)*(Math.PI*1.15);
+    const speed=6+Math.random()*9;
+    confettiParticles.push({
+      x:cx, y:cy,
+      vx:Math.cos(angle)*speed, vy:Math.sin(angle)*speed-2,
+      g:0.28+Math.random()*0.12, size:6+Math.random()*6,
+      color:CELEBRATE_COLORS[(Math.random()*CELEBRATE_COLORS.length)|0],
+      rot:Math.random()*Math.PI, vr:(Math.random()-0.5)*0.3,
+      shape:Math.random()<0.5?"rect":"circle",
+      life:1, decay:0.006+Math.random()*0.006
+    });
+  }
+  if(!confettiRaf) confettiRaf=requestAnimationFrame(confettiTick);
+}
+function confettiTick(){
+  confettiCtx.clearRect(0,0,confettiCanvas.width,confettiCanvas.height);
+  confettiParticles=confettiParticles.filter(p=>p.life>0 && p.y<window.innerHeight+40);
+  for(const p of confettiParticles){
+    p.vy+=p.g; p.vx*=0.99; p.x+=p.vx; p.y+=p.vy; p.rot+=p.vr; p.life-=p.decay;
+    confettiCtx.save();
+    confettiCtx.globalAlpha=Math.max(0,p.life);
+    confettiCtx.translate(p.x,p.y); confettiCtx.rotate(p.rot);
+    confettiCtx.fillStyle=p.color;
+    if(p.shape==="rect") confettiCtx.fillRect(-p.size/2,-p.size/2,p.size,p.size*0.6);
+    else { confettiCtx.beginPath(); confettiCtx.arc(0,0,p.size/2,0,Math.PI*2); confettiCtx.fill(); }
+    confettiCtx.restore();
+  }
+  if(confettiParticles.length) confettiRaf=requestAnimationFrame(confettiTick);
+  else { confettiCtx.clearRect(0,0,confettiCanvas.width,confettiCanvas.height); confettiRaf=null; }
+}
+function celebrate(s){
+  const el=document.getElementById("celebrate");
+  const sub=document.getElementById("celebrateSub");
+  if(sub) sub.textContent=s.done+" of "+s.total+" verified";
+  el.hidden=false;
+  const pop=el.querySelector(".celebrate-popup");
+  pop.classList.remove("hide"); void pop.offsetWidth; pop.classList.add("show");
+  if(!prefersReduced()){
+    const cx=window.innerWidth/2, cy=window.innerHeight/2;
+    spawnConfetti(cx,cy);
+    setTimeout(()=>spawnConfetti(cx-40,cy-10),90);
+    setTimeout(()=>spawnConfetti(cx+40,cy-10),170);
+  }
+}
+function hideCelebrate(){
+  const el=document.getElementById("celebrate");
+  if(el.hidden) return;
+  const pop=el.querySelector(".celebrate-popup");
+  pop.classList.remove("show"); pop.classList.add("hide");
+  setTimeout(()=>{ el.hidden=true; pop.classList.remove("hide"); },260);
+}
+document.getElementById("celebrate").addEventListener("click",hideCelebrate);
+sizeConfetti();
+window.addEventListener("resize",sizeConfetti);
 
 /* ---------- PWA manifest (inline, generated) ---------- */
 (function(){
